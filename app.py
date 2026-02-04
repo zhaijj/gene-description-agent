@@ -4,15 +4,20 @@ from src.agent import GeneDescriptionAgent
 
 # Initialize the agent
 @st.cache_resource
-def get_agent():
-    return GeneDescriptionAgent()
-
-agent = get_agent()
-
-# Page Config
-st.set_page_config(page_title="Maize Gene Agent", page_icon="🧬")
+def get_agent(api_key):
+    return GeneDescriptionAgent(api_key=api_key)
 
 st.title("🧬 Maize Gene Description Agent")
+
+# Sidebar for API Key
+api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
+
+if not api_key:
+    st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")
+    st.stop()
+
+agent = get_agent(api_key)
+
 st.markdown("Enter a maize gene ID (e.g., `Zm00001eb126570`, `Zm00001d049294`) to generate a deep functional summary.")
 
 # Chat History

@@ -10,10 +10,10 @@ from .ortholog_client import OrthologClient
 load_dotenv()
 
 class GeneDescriptionAgent:
-    def __init__(self, model_name="gemini-2.5-pro"):
-        self.api_key = os.environ.get("GOOGLE_API_KEY")
+    def __init__(self, api_key=None, model_name="gemini-2.5-pro"):
+        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
         if not self.api_key:
-            print("Warning: GOOGLE_API_KEY not found in environment variables.")
+            print("Warning: GOOGLE_API_KEY not found in environment variables or passed argument.")
         else:
             self.client = genai.Client(api_key=self.api_key)
             self.model_name = model_name
