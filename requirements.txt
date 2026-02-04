@@ -1,0 +1,6 @@
+requests
+biopython
+google-genai
+python-dotenv
+tenacity
+pydantic
