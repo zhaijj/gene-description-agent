@@ -194,18 +194,6 @@ class GeneDescriptionAgent:
         - [Title](https://pubmed.ncbi.nlm.nih.gov/PMID/)
         """
 
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
-
-# ... (imports)
-
-# ... (inside class)
-
-    def _summarize(self, gene_id, maize_meta, orthologs, documents):
-        if not self.api_key:
-            return "Error: Gemini API Key not found."
-
-        # ... (rest of prompt construction)
-
         try:
             response = self._run_gemini(prompt)
             return response.text
