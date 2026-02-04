@@ -3,7 +3,6 @@ import time
 from src.agent import GeneDescriptionAgent
 
 # Initialize the agent
-@st.cache_resource
 def get_agent(api_key):
     return GeneDescriptionAgent(api_key=api_key)
 
