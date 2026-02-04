@@ -3,7 +3,8 @@ import json
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential
+from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 from .ncbi_client import NCBIClient
 from .ortholog_client import OrthologClient
 
@@ -193,8 +194,24 @@ class GeneDescriptionAgent:
         - [Title](https://pubmed.ncbi.nlm.nih.gov/PMID/)
         """
 
+from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
+
+# ... (imports)
+
+# ... (inside class)
+
+    def _summarize(self, gene_id, maize_meta, orthologs, documents):
+        if not self.api_key:
+            return "Error: Gemini API Key not found."
+
+        # ... (rest of prompt construction)
+
         try:
             response = self._run_gemini(prompt)
             return response.text
+        except RetryError as e:
+            # Unwrap the underlying exception (e.g., 429 Quota Exceeded, 400 Bad Request)
+            real_err = e.last_attempt.exception()
+            return f"**API Error**: Failed after retries.\n\n**Cause**: `{real_err}`\n\n*Check your API Key permissions and Quota.*"
         except Exception as e:
             return f"Error generating summary: {e}"

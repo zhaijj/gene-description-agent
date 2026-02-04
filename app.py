@@ -6,9 +6,9 @@ importlib.reload(src.agent)
 from src.agent import GeneDescriptionAgent
 
 # Initialize the agent
-def get_agent(api_key):
+def get_agent(api_key, model_name):
     try:
-        return GeneDescriptionAgent(api_key=str(api_key))
+        return GeneDescriptionAgent(api_key=str(api_key), model_name=model_name)
     except Exception as e:
         st.error(f"Failed to initialize Agent: {e}")
         st.code(traceback.format_exc())
@@ -16,14 +16,25 @@ def get_agent(api_key):
 
 st.title("🧬 Maize Gene Description Agent")
 
-# Sidebar for API Key
+# Sidebar
+st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
+
+# Model Selection
+model_options = [
+    "gemini-2.0-flash",
+    "gemini-2.0-pro-exp-02-05", # Updated Pro
+    "gemini-1.5-pro",
+    "gemini-1.5-flash", 
+    "gemini-2.5-pro", # Experimental
+]
+model_name = st.sidebar.selectbox("Choose Model", model_options, index=0)
 
 if not api_key:
     st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")
     st.stop()
 
-agent = get_agent(api_key)
+agent = get_agent(api_key, model_name)
 
 st.markdown("Enter a maize gene ID (e.g., `Zm00001eb126570`, `Zm00001d049294`) to generate a deep functional summary.")
 
