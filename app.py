@@ -21,14 +21,12 @@ st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
 
 # Model Selection
+# Verified working models based on local test
 model_options = [
-    "gemini-2.0-flash",
-    "gemini-2.0-pro-exp-02-05", # Updated Pro
-    "gemini-1.5-pro",
-    "gemini-1.5-flash", 
-    "gemini-2.5-pro", # Experimental
+    "gemini-2.0-flash", # Fast, good for general tasks
+    "gemini-2.5-pro",   # High reasoning, best for complex synthesis
 ]
-model_name = st.sidebar.selectbox("Choose Model", model_options, index=0)
+model_name = st.sidebar.selectbox("Choose Model", model_options, index=1) # Default to 2.5-pro
 
 if not api_key:
     st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")
