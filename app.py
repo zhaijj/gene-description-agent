@@ -1,10 +1,15 @@
+import traceback
 import streamlit as st
-import time
 from src.agent import GeneDescriptionAgent
 
 # Initialize the agent
 def get_agent(api_key):
-    return GeneDescriptionAgent(api_key=api_key)
+    try:
+        return GeneDescriptionAgent(api_key=str(api_key))
+    except Exception as e:
+        st.error(f"Failed to initialize Agent: {e}")
+        st.code(traceback.format_exc())
+        st.stop()
 
 st.title("🧬 Maize Gene Description Agent")
 
