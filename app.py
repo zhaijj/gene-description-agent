@@ -1,5 +1,8 @@
 import traceback
 import streamlit as st
+import importlib
+import src.agent
+importlib.reload(src.agent)
 from src.agent import GeneDescriptionAgent
 
 # Initialize the agent
