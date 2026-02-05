@@ -25,24 +25,24 @@ class GeneDescriptionAgent:
         self.ncbi_client = NCBIClient(email=email)
         self.ortholog_client = OrthologClient()
 
-    def generate_description(self, gene_id):
+    def generate_description(self, gene_id, organism="Maize"):
         """
-        Generates a description for a maize gene ID.
+        Generates a description for a gene ID from the specified organism.
         """
-        print(f"--- Starting Analysis for {gene_id} ---")
+        print(f"--- Starting Analysis for {gene_id} [{organism}] ---")
         
-        # 1. Fetch Maize Metadata (NCBI)
-        print("Fetching Maize Metadata...")
-        maize_meta = self.ncbi_client.get_gene_metadata(gene_id)
+        # 1. Fetch Metadata (NCBI)
+        print(f"Fetching {organism} Metadata...")
+        maize_meta = self.ncbi_client.get_gene_metadata(gene_id, organism=organism)
         if not maize_meta:
-            # Fallback if ID is not found directly, maybe structure partial metadata
-            maize_meta = {"uid": "", "symbol": gene_id, "description": "", "synonyms": [], "organism": "Zea mays"}
+            # Fallback if ID is not found directly
+            maize_meta = {"uid": "", "symbol": gene_id, "description": "", "synonyms": [], "organism": organism}
         
         print(f"Found Metadata: {maize_meta['symbol']} ({maize_meta['description']})")
 
         # 2. Fetch Orthologs
         print("Fetching Orthologs...")
-        orthologs = self.ortholog_client.get_orthologs_for_gene(gene_id, gene_symbol=maize_meta.get('symbol'))
+        orthologs = self.ortholog_client.get_orthologs_for_gene(gene_id, gene_symbol=maize_meta.get('symbol'), source_organism=organism)
         
         # 3. Enrich Orthologs with Metadata (Synonyms from NCBI)
         # We need synonyms to search PubMed effectively
@@ -68,21 +68,19 @@ class GeneDescriptionAgent:
         print("Searching PubMed...")
         documents = []
         
-        # 4a. Maize Search
-        # Query: (GeneID OR Symbol OR Synonyms) AND (Zea mays OR Maize)
-        maize_terms = [gene_id]
-        if maize_meta['symbol'] and maize_meta['symbol'] != gene_id: maize_terms.append(maize_meta['symbol'])
-        maize_terms.extend(maize_meta['synonyms'])
-        # Filter empty and duplicates
-        maize_terms = list(set([t for t in maize_terms if t]))
+        # 4a. Source Organism Search
+        # Query: (GeneID OR Symbol OR Synonyms) AND (Organism)
+        source_terms = [gene_id]
+        if maize_meta['symbol'] and maize_meta['symbol'] != gene_id: source_terms.append(maize_meta['symbol'])
+        source_terms.extend(maize_meta['synonyms'])
+        source_terms = list(set([t for t in source_terms if t]))
         
+        query_group = " OR ".join([f"({t})" for t in source_terms])
+        source_query = f"({query_group}) AND ({organism})"
+        print(f"  [PubMed Query - {organism}] {source_query}")
         
-        maize_query_group = " OR ".join([f"({t})" for t in maize_terms])
-        maize_query = f"({maize_query_group}) AND (Zea mays OR Maize)"
-        print(f"  [PubMed Query - Maize] {maize_query}")
-        
-        docs = self.ncbi_client.search_pubmed(maize_query, max_results=5)
-        for d in docs: d['source'] = 'Maize Search'
+        docs = self.ncbi_client.search_pubmed(source_query, max_results=5)
+        for d in docs: d['source'] = f'{organism} Search'
         documents.extend(docs)
 
         # 4b. Arabidopsis Search
@@ -152,7 +150,7 @@ class GeneDescriptionAgent:
             doc_text += f"    Abstract: {d['abstract'][:1500]}\n\n" # Truncate long abstracts
 
         prompt = f"""
-        You are an expert plant biologist. Identify the function of Maize Gene {gene_id}.
+        You are an expert plant biologist. Identify the function of {maize_meta['organism']} Gene {gene_id}.
         
         ### Gene Information
         - ID: {gene_id}
@@ -167,7 +165,7 @@ class GeneDescriptionAgent:
         {doc_text}
         
         ### Task
-        You are an expert plant biologist. Your goal is to generate a deep, specific, and up-to-date summary of the maize gene {gene_id}, matching the quality of a "Google AI Overview".
+        You are an expert plant biologist. Your goal is to generate a deep, specific, and up-to-date summary of the {maize_meta['organism']} gene {gene_id}, matching the quality of a "Google AI Overview".
 
         1. **Deep Search & Synthesis**:
            - Use **Google Search** aggressively to find the most recent information (especially papers from 2023-2025).

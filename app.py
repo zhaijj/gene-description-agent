@@ -86,10 +86,40 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧬 Maize Gene Description Agent")
+st.title("🧬 Plant Gene Description Agent")
 
 # Sidebar
 st.sidebar.header("Configuration")
+
+# Species Selection (Top of Sidebar)
+species_options = ["Maize", "Rice", "Arabidopsis", "Sorghum", "Other"]
+selected_species = st.sidebar.selectbox("Select Species", species_options, index=0)
+
+target_organism = selected_species
+
+if selected_species == "Other":
+    custom_species = st.sidebar.text_input("Enter Scientific Name (e.g., Solanum lycopersicum)")
+    if custom_species:
+        # Runtime Validation
+        # Use a temporary client or the agent's client if initialized
+        # We need to initialize agent first or use a static helper? 
+        # Better to initialize agent below, but we can do a quick check if we want, 
+        # OR just pass it to the agent and let the agent handle it during generation?
+        # The plan said: "Trigger checking on input".
+        # We can instantiate a temp OrthologClient just for validation check
+        from src.ortholog_client import OrthologClient
+        temp_client = OrthologClient()
+        is_valid, msg = temp_client.validate_species(custom_species)
+        
+        if is_valid:
+            st.sidebar.success(f"Species '{custom_species}' accepted ({msg})")
+            target_organism = custom_species
+        else:
+             st.sidebar.error(f"⚠️ Validation Failed: {msg}")
+             # We let them proceed but warn them? 
+             # Or we make target_organism explicit
+             target_organism = custom_species # Let it fail in main loop if needed, or maybe user wants to try regardless
+
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
 
 # NCBI Email Configuration
@@ -169,7 +199,7 @@ if not email:
 
 agent = get_agent(api_key, model_name, email)
 
-st.markdown("Enter a maize gene ID (e.g., `Zm00001eb126570`, `Zm00001d049294`) to generate a deep functional summary.")
+st.markdown(f"Enter a {target_organism if target_organism else 'Plant'} gene ID to generate a deep functional summary.")
 
 # Chat History
 if "messages" not in st.session_state:
@@ -211,14 +241,26 @@ def set_gene(gene_id):
     st.session_state.prompt_input = gene_id
 
 # Example Buttons
-st.markdown("**Try an example:**")
-col_ex1, col_ex2, col_ex3 = st.columns(3)
-if col_ex1.button("Zm00001eb126570"):
-    set_gene("Zm00001eb126570")
-if col_ex2.button("Zm00001d049294"):
-    set_gene("Zm00001d049294")
-if col_ex3.button("Zm00001eb264930"):
-    set_gene("Zm00001eb264930")
+# Define examples for each species
+examples = {
+    "Maize": ["Zm00001eb126570", "Zm00001d049294", "Zm00001eb264930"],
+    "Arabidopsis": ["AT5G10140", "AT2G17950", "AT3G26744"],
+    "Rice": ["Os03g0752800", "Os03g0764800", "Os04g0663700"],
+    "Sorghum": ["Sobic.001G000100"], # Placeholder
+    "Other": []
+}
+
+current_examples = examples.get(target_organism, [])
+
+if current_examples:
+    st.markdown(f"**Try an example ({target_organism}):**")
+    cols = st.columns(len(current_examples))
+    for i, ex in enumerate(current_examples):
+        if cols[i].button(ex):
+            set_gene(ex)
+else:
+    # Fallback or generic content if no examples
+    pass
 
 # Check if we have an example click pending
 if "prompt_input" in st.session_state:
@@ -259,7 +301,7 @@ if prompt := st.chat_input("Enter Gene ID") or initial_value:
                     else:
                         st.spinner("Analyzing gene metadata...")
                 
-                response = agent.generate_description(prompt.strip())
+                response = agent.generate_description(prompt.strip(), organism=target_organism)
             
             message_placeholder.markdown(response)
             st.session_state.messages.append({
