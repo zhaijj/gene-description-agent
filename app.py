@@ -4,6 +4,7 @@ import importlib
 import src.agent
 importlib.reload(src.agent)
 from src.agent import GeneDescriptionAgent
+from src.analytics import Analytics
 
 # Initialize the agent
 def get_agent(api_key, model_name):
@@ -14,11 +15,17 @@ def get_agent(api_key, model_name):
         st.code(traceback.format_exc())
         st.stop()
 
+
+# Initialize Analytics
+analytics = Analytics()
+analytics.track_user()
+
 st.title("🧬 Maize Gene Description Agent")
 
 # Sidebar
 st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
+
 
 # Model Selection
 # Verified working models based on local test
@@ -29,6 +36,12 @@ model_options = [
     "gemini-3-pro-preview",  # Experimental (Pro)
 ]
 model_name = st.sidebar.selectbox("Choose Model", model_options, index=0)
+
+st.sidebar.markdown("---")
+# Analytics Section (Default Expanded)
+# Using an expander is cleaner than a checkbox if it's "on by default" but collapsible
+with st.sidebar.expander("📊 Traffic Analytics", expanded=True):
+    analytics.display_analytics()
 
 if not api_key:
     st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")

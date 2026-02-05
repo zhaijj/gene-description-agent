@@ -5,3 +5,5 @@ python-dotenv
 tenacity
 pydantic
 streamlit
+streamlit-javascript
+pandas
