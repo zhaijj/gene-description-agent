@@ -79,6 +79,15 @@ for idx, message in enumerate(st.session_state.messages):
                 on_change=on_feedback_submit,
                 args=(idx, message["gene_id"]) # dummy args, using closure above or session state
             )
+            
+            # Download Button
+            st.download_button(
+                label="📥 Download Report",
+                data=message["content"],
+                file_name=f"{message['gene_id']}_description.md",
+                mime="text/markdown",
+                key=f"download_{idx}"
+            )
 
 # Chat Input
 if prompt := st.chat_input("Enter Gene ID"):
@@ -122,6 +131,15 @@ if prompt := st.chat_input("Enter Gene ID"):
                 "thumbs", 
                 key=f"feedback_{new_idx}",
                 on_change=on_new_feedback_submit
+            )
+            
+            # Download Button for the new message
+            st.download_button(
+                label="📥 Download Report",
+                data=response,
+                file_name=f"{prompt.strip()}_description.md",
+                mime="text/markdown",
+                key=f"download_{new_idx}"
             )
             
         except Exception as e:
