@@ -192,7 +192,8 @@ class GeneDescriptionAgent:
         [Keyword 1], [Keyword 2], ...
         
         **Key References**:
-        - [Title](https://pubmed.ncbi.nlm.nih.gov/PMID/)
+        - [Title of Paper](https://pubmed.ncbi.nlm.nih.gov/PMID/)
+        - (STRICTLY use this format. Do NOT list authors, year, or journal name. Just the Title and Link.)
         """
 
         try:
