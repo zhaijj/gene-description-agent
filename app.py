@@ -41,11 +41,19 @@ model_options = [
 ]
 model_name = st.sidebar.selectbox("Choose Model", model_options, index=0)
 
-st.sidebar.markdown("---")
 # Analytics Section (Default Expanded)
 # Using an expander is cleaner than a checkbox if it's "on by default" but collapsible
 with st.sidebar.expander("📊 Traffic Analytics", expanded=True):
     analytics.display_analytics()
+
+# General Feedback/Comments
+with st.sidebar.expander("💬 Leave a Comment"):
+    comment_text = st.text_area("Share your thoughts, suggestions, or report bugs:", height=100)
+    if st.button("Submit Feedback"):
+        if comment_text.strip():
+            feedback_manager.log_comment(comment_text)
+        else:
+            st.warning("Please enter some text.")
 
 if not api_key:
     st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")
