@@ -20,6 +20,10 @@ def get_agent(api_key, model_name):
 analytics = Analytics()
 analytics.track_user()
 
+# Initialize Feedback
+from src.feedback import Feedback
+feedback_manager = Feedback()
+
 st.title("🧬 Maize Gene Description Agent")
 
 # Sidebar
@@ -56,9 +60,25 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Display previous messages
-for message in st.session_state.messages:
+for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        
+        # Display feedback button for assistant messages if gene_id is present
+        if message["role"] == "assistant" and "gene_id" in message:
+            def on_feedback_submit(idx=idx, gene_id=message["gene_id"]):
+                # Get the value from session state using the key
+                key = f"feedback_{idx}"
+                if key in st.session_state:
+                    rating = 1 if st.session_state[key] == "thumbs_up" else 0
+                    feedback_manager.log_feedback(gene_id, rating)
+
+            st.feedback(
+                "thumbs",
+                key=f"feedback_{idx}",
+                on_change=on_feedback_submit,
+                args=(idx, message["gene_id"]) # dummy args, using closure above or session state
+            )
 
 # Chat Input
 if prompt := st.chat_input("Enter Gene ID"):
@@ -79,7 +99,30 @@ if prompt := st.chat_input("Enter Gene ID"):
                  response = agent.generate_description(prompt.strip())
             
             message_placeholder.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": response,
+                "gene_id": prompt.strip() # Store gene_id for feedback context
+            })
+            
+            # Show feedback widget for the new message immediately
+            # The current message is the last one in session_state
+            # But st.feedback needs a key. We can rerender or just let the loop handle it on next run?
+            # Better to show it now.
+            # Using a simple key based on length
+            new_idx = len(st.session_state.messages) - 1
+            
+            def on_new_feedback_submit():
+                key = f"feedback_{new_idx}"
+                if key in st.session_state:
+                     rating = 1 if st.session_state[key] == "thumbs_up" else 0
+                     feedback_manager.log_feedback(prompt.strip(), rating)
+
+            st.feedback(
+                "thumbs", 
+                key=f"feedback_{new_idx}",
+                on_change=on_new_feedback_submit
+            )
             
         except Exception as e:
             error_message = f"**Error**: {str(e)}"
