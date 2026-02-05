@@ -43,7 +43,10 @@ A "Pro" Streamlit agent that generates deep functional summaries for Maize genes
     streamlit run app.py
     ```
 
-2.  **Enter your API Key**: Using the sidebar.
+2.  **Configuration**:
+    - Enter your **Gemini API Key**.
+    - Enter your **NCBI Email** (Required for Entrez API).
+    - *Optionally save the email to local .env*.
 3.  **Search**: Enter a gene ID (e.g., `Zm00001eb126570`) or click an example button.
 4.  **Explore**: View the description, check the traffic map, or download the report.
 

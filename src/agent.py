@@ -11,7 +11,7 @@ from .ortholog_client import OrthologClient
 load_dotenv()
 
 class GeneDescriptionAgent:
-    def __init__(self, api_key=None, model_name="gemini-2.5-pro"):
+    def __init__(self, api_key=None, model_name="gemini-2.5-pro", email=None):
         self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
         if not self.api_key:
             print("Warning: GOOGLE_API_KEY not found in environment variables or passed argument.")
@@ -19,7 +19,10 @@ class GeneDescriptionAgent:
             self.client = genai.Client(api_key=self.api_key)
             self.model_name = model_name
         
-        self.ncbi_client = NCBIClient()
+        # NCBI Client needs an email now
+        if not email:
+             raise ValueError("NCBI Email is required for GeneDescriptionAgent.")
+        self.ncbi_client = NCBIClient(email=email)
         self.ortholog_client = OrthologClient()
 
     def generate_description(self, gene_id):

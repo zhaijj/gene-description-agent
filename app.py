@@ -7,11 +7,15 @@ from src.agent import GeneDescriptionAgent
 from src.analytics import Analytics
 from streamlit_lottie import st_lottie
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize the agent
-def get_agent(api_key, model_name):
+def get_agent(api_key, model_name, email):
     try:
-        return GeneDescriptionAgent(api_key=str(api_key), model_name=model_name)
+        return GeneDescriptionAgent(api_key=str(api_key), model_name=model_name, email=email)
     except Exception as e:
         st.error(f"Failed to initialize Agent: {e}")
         st.code(traceback.format_exc())
@@ -88,6 +92,48 @@ st.title("🧬 Maize Gene Description Agent")
 st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Enter your Google Gemini API Key.")
 
+# NCBI Email Configuration
+env_email = os.getenv("NCBI_EMAIL", "")
+email = st.sidebar.text_input("NCBI Email", value=env_email, help="Required for NCBI Entrez API access.")
+
+if email and email != env_email:
+    if st.sidebar.button("Save Email to .env"):
+        try:
+            # Simple append/update logic for .env
+            env_path = ".env"
+            # Read existing
+            lines = []
+            if os.path.exists(env_path):
+                with open(env_path, "r") as f:
+                    lines = f.readlines()
+            
+            # Update or Append
+            new_lines = []
+            found = False
+            for line in lines:
+                if line.startswith("NCBI_EMAIL="):
+                    new_lines.append(f"NCBI_EMAIL={email}\n")
+                    found = True
+                else:
+                    new_lines.append(line)
+            
+            if not found:
+                if new_lines and not new_lines[-1].endswith("\n"):
+                    new_lines.append("\n")
+                new_lines.append(f"NCBI_EMAIL={email}\n")
+            
+            with open(env_path, "w") as f:
+                f.writelines(new_lines)
+            
+            st.sidebar.success("Saved to .env!")
+            # Optional: Reload env?
+            os.environ["NCBI_EMAIL"] = email
+        except Exception as e:
+            st.sidebar.error(f"Failed to save .env: {e}")
+
+if not email:
+    st.sidebar.warning("⚠️ Please provide an email for NCBI access.")
+
 
 # Model Selection
 # Verified working models based on local test
@@ -117,7 +163,11 @@ if not api_key:
     st.warning("⚠️ Please enter your Gemini API Key in the sidebar to proceed.")
     st.stop()
 
-agent = get_agent(api_key, model_name)
+if not email:
+    st.warning("⚠️ Please enter your NCBI Email in the sidebar to proceed.")
+    st.stop()
+
+agent = get_agent(api_key, model_name, email)
 
 st.markdown("Enter a maize gene ID (e.g., `Zm00001eb126570`, `Zm00001d049294`) to generate a deep functional summary.")
 
