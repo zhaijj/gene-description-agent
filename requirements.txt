@@ -7,3 +7,4 @@ pydantic
 streamlit
 streamlit-javascript
 pandas
+streamlit-lottie

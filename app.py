@@ -5,6 +5,8 @@ import src.agent
 importlib.reload(src.agent)
 from src.agent import GeneDescriptionAgent
 from src.analytics import Analytics
+from streamlit_lottie import st_lottie
+import requests
 
 # Initialize the agent
 def get_agent(api_key, model_name):
@@ -22,7 +24,63 @@ analytics.track_user()
 
 # Initialize Feedback
 from src.feedback import Feedback
+from src.feedback import Feedback
 feedback_manager = Feedback()
+
+# --- Configurations & Assets ---
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# DNA Animation (Spinning Helix from Lottie)
+lottie_dna = load_lottieurl("https://lottie.host/embed/98642b58-8686-444a-9694-8148b598d9c1/4j5q3QZ9Q8.json")
+# Fallback if that specific URL has issues, generic science/dna one often used:
+if not lottie_dna:
+     # Using a known public one as backup
+     lottie_dna = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_w51pcehl.json")
+
+# Custom CSS for "Maize" Theme (Gold & Green)
+st.markdown("""
+<style>
+    /* Main Background & Fonts */
+    .stApp {
+        background-color: #fcfcfc;
+    }
+    
+    /* Headers - Maize Green */
+    h1, h2, h3 {
+        color: #006633 !important;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    /* Buttons - Maize Gold with Green Text */
+    div.stButton > button {
+        background-color: #FFC72C;
+        color: #006633;
+        border: none;
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+    }
+    div.stButton > button:hover {
+        background-color: #e6b325;
+        color: #004d26;
+        border: none;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f0f2f6;
+    }
+    
+    /* Input fields accent */
+    div.stTextInput > div > div > input {
+        border-color: #006633;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("🧬 Maize Gene Description Agent")
 
@@ -98,7 +156,35 @@ for idx, message in enumerate(st.session_state.messages):
             )
 
 # Chat Input
-if prompt := st.chat_input("Enter Gene ID"):
+# Helper to handle example clicks
+def set_gene(gene_id):
+    st.session_state.prompt_input = gene_id
+
+# Example Buttons
+st.markdown("**Try an example:**")
+col_ex1, col_ex2, col_ex3 = st.columns(3)
+if col_ex1.button("Zm00001eb126570"):
+    set_gene("Zm00001eb126570")
+if col_ex2.button("Zm00001d049294"):
+    set_gene("Zm00001d049294")
+if col_ex3.button("Zm00001eb264930"):
+    set_gene("Zm00001eb264930")
+
+# Check if we have an example click pending
+if "prompt_input" in st.session_state:
+    initial_value = st.session_state.prompt_input
+    # Clear it so it doesn't stick
+    del st.session_state.prompt_input
+else:
+    initial_value = None
+
+if prompt := st.chat_input("Enter Gene ID") or initial_value:
+    # If it came from button, prompt variable will be None from chat_input, so we use initial_value
+    if not prompt: 
+        prompt = initial_value
+        # For chat_input, we can't programmatically set the text inside standard st.chat_input easily without experimental features
+        # But we can proceed as if the user sent it.
+        # Note: UI won't show the text in the input box, but it will appear in chat history.
     # Add user message to history
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -112,8 +198,18 @@ if prompt := st.chat_input("Enter Gene ID"):
         try:
             # Capture stdout to show logs? For now, just run it.
             # Using spinner for better UX during long running task
-            with st.spinner("Analyzing gene metadata, orthologs, and literature..."):
-                 response = agent.generate_description(prompt.strip())
+            # with st.spinner("Analyzing gene metadata, orthologs, and literature..."):
+            
+            # Use Lottie Animation instead of spinner
+            with st.container():
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    if lottie_dna:
+                        st_lottie(lottie_dna, height=200, key="dna_loading")
+                    else:
+                        st.spinner("Analyzing gene metadata...")
+                
+                response = agent.generate_description(prompt.strip())
             
             message_placeholder.markdown(response)
             st.session_state.messages.append({
