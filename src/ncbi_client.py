@@ -3,7 +3,9 @@ from Bio import Entrez
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 class NCBIClient:
-    def __init__(self, email="jz963@cornell.edu"):
+    def __init__(self, email):
+        if not email:
+            raise ValueError("NCBI Email is required for Entrez usage.")
         Entrez.email = email
         self.max_retries = 3
 
