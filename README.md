@@ -1,14 +1,17 @@
-# 🧬 Maize Gene Description Agent
+# 🧬 Plant Gene Description Agent
 
-A "Pro" Streamlit agent that generates deep functional summaries for Maize genes using Google Gemini.
+A "Pro" Streamlit agent that generates deep functional summaries for Plant genes (Maize, Rice, Arabidopsis, etc.) using Google Gemini.
+
+🔗 **[Live Demo](https://zhaijj-gene-description-agent-app-temssq.streamlit.app)**
 
 ## ✨ Features
 
+- **🌱 Multi-Species Support**: Works with Maize, Rice, Arabidopsis, Sorghum, and allows custom species input (e.g., *Solanum lycopersicum*).
 - **🤖 AI-Powered Analysis**: Generates comprehensive descriptions using Gemini 2.5/3 Pro models.
 - **📊 Traffic Analytics**: Tracks visitor locations and displays live traffic stats and map.
 - **👍 Interactive Feedback**: Rate responses (Thumbs Up/Down) and leave general comments.
 - **📥 Download Reports**: Save generated descriptions as Markdown files.
-- **🎨 Maize Theme**: Custom Green & Gold UI with a polished sidebar and animated DNA loader.
+- **🎨 Modern UI**: Clean, dynamic interface with species-specific examples and validation.
 
 ## 🚀 Getting Started
 
@@ -47,7 +50,9 @@ A "Pro" Streamlit agent that generates deep functional summaries for Maize genes
     - Enter your **Gemini API Key**.
     - Enter your **NCBI Email** (Required for Entrez API).
     - *Optionally save the email to local .env*.
-3.  **Search**: Enter a gene ID (e.g., `Zm00001eb126570`) or click an example button.
+3.  **Search**: 
+    - Select a **Species** from the sidebar (e.g., Maize, Rice, Arabidopsis).
+    - Enter a gene ID (e.g., `AT5G10140` for Arabidopsis) or click one of the **dynamic example buttons**.
 4.  **Explore**: View the description, check the traffic map, or download the report.
 
 ## 📂 Data Storage
@@ -56,4 +61,4 @@ A "Pro" Streamlit agent that generates deep functional summaries for Maize genes
 - `feedback.csv`: User ratings for gene descriptions.
 - `comments.csv`: General user comments logged from the sidebar.
 
-> **Note**: This agent works best with *Zea mays* gene models (e.g., B73 RefGen_v5).
+> **Note**: This agent leverages g:Profiler for ortholog conversion. While verified for Maize, Rice, and Arabidopsis, other species support depends on g:Profiler's database coverage.
