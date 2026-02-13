@@ -165,11 +165,14 @@ if not email:
     st.sidebar.warning("⚠️ Please provide an email for NCBI access.")
 
 
-# Model Selection
-# Verified working models based on local test
+
 model_options = [
-    "gemini-2.5-pro",        # Best Reasoning (Default)
+    "gemini-2.0-flash",      # Recommended (Fast & Smart)
+    "gemini-2.0-flash-lite", # Ultra Lightweight & Cheap
+    "gemini-1.5-flash",      # Stable & Cost Effective
+    "gemini-1.5-pro",        # Stable Reasoning
     "gemini-2.5-flash",      # High Speed
+    "gemini-2.5-pro",        # Best Reasoning
     "gemini-3-flash-preview",# Experimental (Flash)
     "gemini-3-pro-preview",  # Experimental (Pro)
 ]
@@ -226,14 +229,15 @@ for idx, message in enumerate(st.session_state.messages):
                 args=(idx, message["gene_id"]) # dummy args, using closure above or session state
             )
             
-            # Download Button
-            st.download_button(
-                label="📥 Download Report",
-                data=message["content"],
-                file_name=f"{message['gene_id']}_description.md",
-                mime="text/markdown",
-                key=f"download_{idx}"
-            )
+            # Download Button (only if content is available)
+            if message.get("content"):
+                st.download_button(
+                    label="📥 Download Report",
+                    data=message["content"],
+                    file_name=f"{message.get('gene_id', 'report')}_description.md",
+                    mime="text/markdown",
+                    key=f"download_{idx}"
+                )
 
 # Chat Input
 # Helper to handle example clicks
@@ -330,13 +334,14 @@ if prompt := st.chat_input("Enter Gene ID") or initial_value:
             )
             
             # Download Button for the new message
-            st.download_button(
-                label="📥 Download Report",
-                data=response,
-                file_name=f"{prompt.strip()}_description.md",
-                mime="text/markdown",
-                key=f"download_{new_idx}"
-            )
+            if response:
+                st.download_button(
+                    label="📥 Download Report",
+                    data=response,
+                    file_name=f"{prompt.strip()}_description.md",
+                    mime="text/markdown",
+                    key=f"download_{new_idx}"
+                )
             
         except Exception as e:
             error_message = f"**Error**: {str(e)}"

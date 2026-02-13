@@ -198,7 +198,14 @@ class GeneDescriptionAgent:
 
         try:
             response = self._run_gemini(prompt)
-            return response.text
+            if response and response.text:
+                return response.text
+            else:
+                # Handle cases where response is blocked (e.g. Safety) or empty
+                finish_reason = "Unknown"
+                if response and response.candidates and len(response.candidates) > 0:
+                    finish_reason = response.candidates[0].finish_reason
+                return f"**Analysis Failed**: The AI model did not return any text. (Reason: {finish_reason})\n\nThis may be due to safety filters or an API issue. Please try again or use a different model."
         except RetryError as e:
             # Unwrap the underlying exception (e.g., 429 Quota Exceeded, 400 Bad Request)
             real_err = e.last_attempt.exception()
