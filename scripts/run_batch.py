@@ -4,6 +4,7 @@ import pandas as pd
 import argparse
 import re
 import time
+from tqdm import tqdm
 from dotenv import load_dotenv
 
 # Add src to path
@@ -18,6 +19,7 @@ def parse_args():
     parser.add_argument("--output", required=True, help="Path to output TSV file")
     parser.add_argument("--api_key", help="Gemini API Key (optional, can use env)")
     parser.add_argument("--email", help="NCBI Email (optional, can use env)")
+    parser.add_argument("--model", default="gemini-2.0-flash-exp", help="Gemini model to use (default: gemini-2.0-flash-exp)")
     return parser.parse_args()
 
 def parse_markdown_output(text):
@@ -122,18 +124,40 @@ def main():
         print("Error: GOOGLE_API_KEY and NCBI_EMAIL are required.")
         return
         
-    print("Initializing Agent...")
-    agent = GeneDescriptionAgent(api_key=api_key, email=email)
+    print(f"Initializing Agent with model: {args.model}...")
+    agent = GeneDescriptionAgent(api_key=api_key, email=email, model_name=args.model)
     
-    results = []
+    # Define column structure
+    base_cols = ["GeneID", "Species", "Summary"]
+    kw_cols = [f"Keyword {i+1}" for i in range(5)]
+    ref_cols = [f"Reference {i+1}" for i in range(5)]
+    status_col = ["Status"]
+    final_cols = base_cols + kw_cols + ref_cols + status_col
     
-    print(f"Processing {len(df)} genes...")
+    # Determine output mode
+    is_html_output = args.output.endswith('.html')
     
-    for index, row in df.iterrows():
+    # For HTML output, set up reports directory
+    if is_html_output:
+        output_dir = os.path.dirname(os.path.abspath(args.output))
+        output_basename = os.path.splitext(os.path.basename(args.output))[0]
+        reports_dir_name = f"{output_basename}_reports"
+        reports_dir = os.path.join(output_dir, reports_dir_name)
+        os.makedirs(reports_dir, exist_ok=True)
+        print(f"Created reports directory: {reports_dir}")
+    
+    # Initialize output file with header
+    if not is_html_output:
+        # Create TSV with header
+        header_df = pd.DataFrame(columns=final_cols)
+        header_df.to_csv(args.output, sep='\t', index=False)
+    
+    results = []  # Keep results in memory for HTML table generation
+    
+    # Process genes with progress bar
+    for index, row in tqdm(df.iterrows(), total=len(df), desc="Processing genes", unit="gene"):
         gene_id = str(row[id_col]).strip()
         species = str(row[species_col]).strip()
-        
-        print(f"[{index+1}/{len(df)}] Processing {gene_id} ({species})...")
         
         try:
             # Generate Description
@@ -160,9 +184,7 @@ def main():
             
             # Store full markdown for HTML report generation
             row_data["FullReport"] = description_md
-            
             row_data["Status"] = "Success"
-            results.append(row_data)
             
         except Exception as e:
             print(f"  Error: {e}")
@@ -177,64 +199,26 @@ def main():
             for i in range(5):
                 row_data[f"Keyword {i+1}"] = ""
                 row_data[f"Reference {i+1}"] = ""
-            results.append(row_data)
         
-        # Rate limit friendly status update
-        # time.sleep(1) 
-
-    # Save Output
-    result_df = pd.DataFrame(results)
-    # Reorder columns to be nice
-    base_cols = ["GeneID", "Species", "Summary"]
-    kw_cols = [f"Keyword {i+1}" for i in range(5)]
-    ref_cols = [f"Reference {i+1}" for i in range(5)]
-    status_col = ["Status"]
-    
-    # We don't filter columns yet if we need FullReport for HTML
-    
-    if args.output.endswith('.html'):
-        # Linked Summaries Logic
-        
-        # 1. Create reports folder
-        output_dir = os.path.dirname(os.path.abspath(args.output))
-        output_basename = os.path.splitext(os.path.basename(args.output))[0]
-        reports_dir_name = f"{output_basename}_reports"
-        reports_dir = os.path.join(output_dir, reports_dir_name)
-        
-        os.makedirs(reports_dir, exist_ok=True)
-        print(f"Created reports directory: {reports_dir}")
-        
-        # 2. Iterate through rows to save reports and update Summary link
-        for index, row in result_df.iterrows():
-            gene_id = str(row['GeneID']).strip()
-            # Sanitize filename
+        # Write to disk immediately
+        if is_html_output:
+            # For HTML: save individual report and keep in memory for final table
             safe_id = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', gene_id)
             report_filename = f"{safe_id}.html"
             report_path = os.path.join(reports_dir, report_filename)
             
-            # Simple HTML wrapper for the report
-            # Convert simple markdown to HTML (very basic)
-            # Or just wrap the markdown in <pre> or use a simple converter if desired.
-            # Using a simple <pre> style for now or basic replacement for headers/bold/links.
-            
             def simple_md_to_html(md_text):
-                # Basic conversion
                 html = md_text
-                # Headers
                 html = re.sub(r'^# (.*)', r'<h1>\1</h1>', html, flags=re.MULTILINE)
                 html = re.sub(r'^## (.*)', r'<h2>\1</h2>', html, flags=re.MULTILINE)
                 html = re.sub(r'^### (.*)', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-                # Bold
                 html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html)
-                # Links
                 html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', html)
-                # Lists
                 html = re.sub(r'^\- (.*)', r'<li>\1</li>', html, flags=re.MULTILINE)
-                # Newlines to <br> (except near tags)
                 html = html.replace('\n', '<br>')
                 return html
-
-            report_content = row.get('FullReport', '')
+            
+            report_content = row_data.get('FullReport', '')
             report_html_body = simple_md_to_html(report_content)
             
             report_html = f"""
@@ -257,60 +241,52 @@ def main():
             
             with open(report_path, 'w') as f:
                 f.write(report_html)
-                
-            # Update Summary column with link
-            # Use relative path suitable for browser
+            
+            # Update Summary with link for HTML table
             link = f'<a href="./{reports_dir_name}/{report_filename}" target="_blank">View Full Report</a>'
-            result_df.at[index, 'Summary'] = link
-
-        # 3. Finalize Main Table
-        # Convert hyperlinks in Reference columns to HTML anchors
-        def _make_html_links(text):
-            if not isinstance(text, str): return text
-            # 1. Replace [Title](URL) with <a href="URL" target="_blank">Title</a>
-            text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', text)
-            # 2. auto-link bare URLs that are NOT inside an href attribute (simple heuristic)
-            # Find http/https that is NOT preceded by 'href="' or '>'. 
-            # This is tricky with regex. 
-            # Safer approach: matching non-linked URLs. 
-            # Negative lookbehind is good: (?<!href=")
-            url_pattern = r'(?<!href=")(?<!">)(https?://[^\s<"]+)'
-            text = re.sub(url_pattern, r'<a href="\1" target="_blank">\1</a>', text)
-            return text
+            row_data["Summary"] = link
+            results.append(row_data)
             
-        for col in ref_cols:
-            if col in result_df.columns:
-                result_df[col] = result_df[col].apply(_make_html_links)
-        
-        # Filter columns now
-        final_cols = base_cols + kw_cols + ref_cols + status_col
-        result_df = result_df[final_cols]
-        
-        html_style = """
-        <style>
-            table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-            tr:nth-child(even) { background-color: #f2f2f2; }
-            th { background-color: #4CAF50; color: white; }
-            a { color: #1a73e8; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-        </style>
-        """
-        
-        html_table = result_df.to_html(index=False, escape=False)
-        
-        with open(args.output, 'w') as f:
-            f.write(html_style + html_table)
+            # Update main HTML table after each gene
+            result_df = pd.DataFrame(results)
             
+            def _make_html_links(text):
+                if not isinstance(text, str): return text
+                text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', text)
+                url_pattern = r'(?<!href=")(?<!">)(https?://[^\s<"]+)'
+                text = re.sub(url_pattern, r'<a href="\1" target="_blank">\1</a>', text)
+                return text
+            
+            for col in ref_cols:
+                if col in result_df.columns:
+                    result_df[col] = result_df[col].apply(_make_html_links)
+            
+            result_df = result_df[final_cols]
+            
+            html_style = """
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+                tr:nth-child(even) { background-color: #f2f2f2; }
+                th { background-color: #4CAF50; color: white; }
+                a { color: #1a73e8; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+            </style>
+            """
+            
+            html_table = result_df.to_html(index=False, escape=False)
+            
+            with open(args.output, 'w') as f:
+                f.write(html_style + html_table)
+        else:
+            # For TSV: append row immediately
+            row_df = pd.DataFrame([row_data])[final_cols]
+            row_df.to_csv(args.output, sep='\t', index=False, mode='a', header=False)
+    
+    if is_html_output:
         print(f"Done! Results saved to HTML file: {args.output}")
         print(f"Individual reports saved to: {reports_dir}")
-        
     else:
-        # Default TSV
-        # Filter colums
-        final_cols = base_cols + kw_cols + ref_cols + status_col
-        result_df = result_df[final_cols]
-        result_df.to_csv(args.output, sep='\t', index=False)
         print(f"Done! Results saved to TSV file: {args.output}")
 
 if __name__ == "__main__":
